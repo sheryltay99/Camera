@@ -8,14 +8,17 @@
 import UIKit
 import AVFoundation
 
-class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
-//class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureDepthDataOutputDelegate {
+//class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
+class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureDepthDataOutputDelegate {
     
     @IBOutlet weak var cameraView: UIView!
     
     let session = AVCaptureSession()
     var previewLayer: CALayer!
     var captureDevice: AVCaptureDevice!
+    var photoOutput: AVCapturePhotoOutput?
+//    var outputSynchronizer: AVCaptureDataOutputSynchronizer?
+    var depthOutput: AVCaptureDepthDataOutput?
     
     var takePhoto = false
     
@@ -53,56 +56,119 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
        
         cameraView.layer.addSublayer(self.previewLayer)
         
-        session.startRunning()
+        depthOutput = AVCaptureDepthDataOutput()
+//        let dataOutputQueue = DispatchQueue(label: "com.sheryltay.dataOutputQueue")
+        let dataOutputQueue = DispatchQueue(label: "data queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem)
+        depthOutput?.setDelegate(self, callbackQueue: dataOutputQueue)
         
-        let dataOutput = AVCaptureVideoDataOutput()
+        photoOutput = AVCapturePhotoOutput()
         
-        dataOutput.videoSettings = [(kCVPixelBufferPixelFormatTypeKey as String): NSNumber(value:kCVPixelFormatType_32BGRA)]
+//        let dataOutput = AVCaptureVideoDataOutput()
+//
+//        dataOutput.videoSettings = [(kCVPixelBufferPixelFormatTypeKey as String): NSNumber(value:kCVPixelFormatType_32BGRA)]
+//
+//        dataOutput.alwaysDiscardsLateVideoFrames = true
         
-        dataOutput.alwaysDiscardsLateVideoFrames = true
-        
-        if session.canAddOutput(dataOutput) {
-            session.addOutput(dataOutput)
+        if let photoOutput = self.photoOutput {
+            if session.canAddOutput(photoOutput) {
+                session.addOutput(photoOutput)
+                
+                if let depthOutput = self.depthOutput {
+                    if session.canAddOutput(depthOutput) {
+                        session.addOutput(depthOutput)
+                    }
+                    if photoOutput.isDepthDataDeliverySupported {
+                        photoOutput.isDepthDataDeliveryEnabled = true
+                        
+                        depthOutput.connection(with: .depthData)?.isEnabled = true
+//                        outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [photoOutput, depthOutput])
+//                        outputSynchronizer!.setDelegate(self, queue: dataOutputQueue)
+                    }
+                }
+            }
+            
         }
         
-        session.commitConfiguration()
+        session.startRunning()
         
-        let queue = DispatchQueue(label: "com.sheryltay.sessionQueue")
-        dataOutput.setSampleBufferDelegate(self, queue: queue)
+        session.commitConfiguration()
+        //        dataOutput.setSampleBufferDelegate(self, queue: queue)
     }
     
     @IBAction func takePhoto(_ sender: Any) {
-        takePhoto = true
+        guard let capturePhotoOutput = self.photoOutput else { return }
+        
+        let photoSettings = AVCapturePhotoSettings()
+        
+        if capturePhotoOutput.isDepthDataDeliverySupported {
+            photoSettings.isDepthDataDeliveryEnabled = true
+
+            capturePhotoOutput.capturePhoto(with: photoSettings, delegate: self)
+        }
+        
     }
     
-    
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        if takePhoto {
-            takePhoto = false
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let dataImage = photo.fileDataRepresentation() {
+            let image = UIImage(data: dataImage)
             
-            let photoOutput = AVCapturePhotoOutput()
-            self.session.addOutput(photoOutput)
-            print(photoOutput.isDepthDataDeliverySupported)
+            if let depthDataMap = photo.depthData?.depthDataMap {
+                let height = CVPixelBufferGetHeight(depthDataMap)
+                print(height)
+            }
             
-            if let image = self.getImageFromSampleBuffer(buffer: sampleBuffer) {
+            if let depthData = photo.depthData {
+                print(depthData.size)
+                print(depthData.percentageOfNaNs)
+                print(depthData.distanceDisplay)
+            }
+            
+            DispatchQueue.main.async {
                 
-//                let photoOutput = output as! AVCapturePhotoOutput
-//                self.session.addOutput(photoOutput)
+                let photoVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(identifier: "PhotoVC") as! PhotoViewController
+                photoVC.takenPhoto = image
                 
-//                if photoOutput.isDepthDataDeliverySupported {
-//                    photoOutput.isDepthDataDeliveryEnabled = true
-//                }
-                
-                DispatchQueue.main.async {
-                    
-                    let photoVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(identifier: "PhotoVC") as! PhotoViewController
-                    photoVC.takenPhoto = image
-                    
-                    self.present(photoVC, animated: true, completion: nil)
-                }
+                self.present(photoVC, animated: true, completion: nil)
             }
         }
     }
+    
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didOutput depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection) {
+        print(depthData)
+        print("depth data output")
+    }
+    
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didDrop depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection, reason: AVCaptureOutput.DataDroppedReason) {
+        print("depth data dropped")
+    }
+    
+    //    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+//        if takePhoto {
+//            takePhoto = false
+//
+//            let photoOutput = AVCapturePhotoOutput()
+//            self.session.addOutput(photoOutput)
+//            print(photoOutput.isDepthDataDeliverySupported)
+//
+//            if let image = self.getImageFromSampleBuffer(buffer: sampleBuffer) {
+//
+////                let photoOutput = output as! AVCapturePhotoOutput
+////                self.session.addOutput(photoOutput)
+//
+////                if photoOutput.isDepthDataDeliverySupported {
+////                    photoOutput.isDepthDataDeliveryEnabled = true
+////                }
+//
+//                DispatchQueue.main.async {
+//
+//                    let photoVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(identifier: "PhotoVC") as! PhotoViewController
+//                    photoVC.takenPhoto = image
+//
+//                    self.present(photoVC, animated: true, completion: nil)
+//                }
+//            }
+//        }
+//    }
     
     func getImageFromSampleBuffer(buffer: CMSampleBuffer) -> UIImage? {
         if let pixelBuffer = CMSampleBufferGetImageBuffer(buffer) {
@@ -130,3 +196,10 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     
 }
 
+
+//extension ViewController: AVCaptureDataOutputSynchronizerDelegate {
+//
+//    func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer, didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection) {
+//        return
+//    }
+//}

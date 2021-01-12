@@ -15,6 +15,7 @@
 		217000D125A57D930074196D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 217000CF25A57D930074196D /* LaunchScreen.storyboard */; };
 		217000DC25A57D940074196D /* CameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 217000DB25A57D940074196D /* CameraTests.swift */; };
 		217000E725A57D940074196D /* CameraUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 217000E625A57D940074196D /* CameraUITests.swift */; };
+		217CEF9F25ADA777001FE98C /* AVDepthData+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 217CEF9E25ADA777001FE98C /* AVDepthData+Extension.swift */; };
 		2191486B25A6C1C600043D64 /* PhotoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2191486A25A6C1C600043D64 /* PhotoViewController.swift */; };
 /* End PBXBuildFile section */
 
@@ -50,6 +51,7 @@
 		217000E225A57D940074196D /* CameraUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CameraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		217000E625A57D940074196D /* CameraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraUITests.swift; sourceTree = "<group>"; };
 		217000E825A57D940074196D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		217CEF9E25ADA777001FE98C /* AVDepthData+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "AVDepthData+Extension.swift"; sourceTree = "<group>"; };
 		2191486A25A6C1C600043D64 /* PhotoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -109,6 +111,7 @@
 				217000CF25A57D930074196D /* LaunchScreen.storyboard */,
 				217000D225A57D930074196D /* Info.plist */,
 				2191486A25A6C1C600043D64 /* PhotoViewController.swift */,
+				217CEF9E25ADA777001FE98C /* AVDepthData+Extension.swift */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -265,6 +268,7 @@
 				2191486B25A6C1C600043D64 /* PhotoViewController.swift in Sources */,
 				217000C525A57D910074196D /* AppDelegate.swift in Sources */,
 				217000C725A57D910074196D /* SceneDelegate.swift in Sources */,
+				217CEF9F25ADA777001FE98C /* AVDepthData+Extension.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
