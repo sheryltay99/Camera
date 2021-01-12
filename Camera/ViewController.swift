@@ -17,7 +17,7 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
     var previewLayer: CALayer!
     var captureDevice: AVCaptureDevice!
     var photoOutput: AVCapturePhotoOutput?
-    var outputSynchronizer: AVCaptureDataOutputSynchronizer?
+//    var outputSynchronizer: AVCaptureDataOutputSynchronizer?
     var depthOutput: AVCaptureDepthDataOutput?
     
     var takePhoto = false
@@ -57,7 +57,8 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
         cameraView.layer.addSublayer(self.previewLayer)
         
         depthOutput = AVCaptureDepthDataOutput()
-        let dataOutputQueue = DispatchQueue(label: "com.sheryltay.dataOutputQueue")
+//        let dataOutputQueue = DispatchQueue(label: "com.sheryltay.dataOutputQueue")
+        let dataOutputQueue = DispatchQueue(label: "data queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem)
         depthOutput?.setDelegate(self, callbackQueue: dataOutputQueue)
         
         photoOutput = AVCapturePhotoOutput()
@@ -111,13 +112,15 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
         if let dataImage = photo.fileDataRepresentation() {
             let image = UIImage(data: dataImage)
             
-            if output.isDepthDataDeliverySupported {
-                
-            }
             if let depthDataMap = photo.depthData?.depthDataMap {
-                let width = CVPixelBufferGetWidth(depthDataMap)
-                print("hi")
-                print(width)
+                let height = CVPixelBufferGetHeight(depthDataMap)
+                print(height)
+            }
+            
+            if let depthData = photo.depthData {
+                print(depthData.size)
+                print(depthData.percentageOfNaNs)
+                print(depthData.distanceDisplay)
             }
             
             DispatchQueue.main.async {
@@ -128,6 +131,15 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
                 self.present(photoVC, animated: true, completion: nil)
             }
         }
+    }
+    
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didOutput depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection) {
+        print(depthData)
+        print("depth data output")
+    }
+    
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didDrop depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection, reason: AVCaptureOutput.DataDroppedReason) {
+        print("depth data dropped")
     }
     
     //    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
