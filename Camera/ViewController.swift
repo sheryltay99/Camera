@@ -8,8 +8,7 @@
 import UIKit
 import AVFoundation
 
-//class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
-class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureDepthDataOutputDelegate {
+class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureDepthDataOutputDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     @IBOutlet weak var cameraView: UIView!
     
@@ -17,7 +16,7 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
     var previewLayer: CALayer!
     var captureDevice: AVCaptureDevice!
     var photoOutput: AVCapturePhotoOutput?
-//    var outputSynchronizer: AVCaptureDataOutputSynchronizer?
+    var outputSynchronizer: AVCaptureDataOutputSynchronizer?
     var depthOutput: AVCaptureDepthDataOutput?
     
     var takePhoto = false
@@ -53,46 +52,47 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
         previewLayer.videoGravity = AVLayerVideoGravity.resizeAspectFill
         self.previewLayer = previewLayer
         self.previewLayer.frame = cameraView.bounds
-       
         cameraView.layer.addSublayer(self.previewLayer)
         
+        let dataOutput = AVCaptureVideoDataOutput()
+        if session.canAddOutput(dataOutput) {
+            session.addOutput(dataOutput)
+        }
+        dataOutput.videoSettings = [(kCVPixelBufferPixelFormatTypeKey as String): NSNumber(value:kCVPixelFormatType_32BGRA)]
+        dataOutput.alwaysDiscardsLateVideoFrames = true
+        let dataOutputQueue = DispatchQueue(label: "com.sheryltay.dataOutputQueue")
+        dataOutput.setSampleBufferDelegate(self, queue: dataOutputQueue)
+        
         depthOutput = AVCaptureDepthDataOutput()
-//        let dataOutputQueue = DispatchQueue(label: "com.sheryltay.dataOutputQueue")
-        let dataOutputQueue = DispatchQueue(label: "data queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem)
-        depthOutput?.setDelegate(self, callbackQueue: dataOutputQueue)
+        let depthOutputQueue = DispatchQueue(label: "com.sheryltay.depthOutputQueue")
+        depthOutput?.setDelegate(self, callbackQueue: depthOutputQueue)
+        if let depthOutput = self.depthOutput {
+            if session.canAddOutput(depthOutput) {
+                session.addOutput(depthOutput)
+            }
+            depthOutput.connection(with: .depthData)?.isEnabled = true
+            depthOutput.isFilteringEnabled = true
+        }
         
         photoOutput = AVCapturePhotoOutput()
-        
-//        let dataOutput = AVCaptureVideoDataOutput()
-//
-//        dataOutput.videoSettings = [(kCVPixelBufferPixelFormatTypeKey as String): NSNumber(value:kCVPixelFormatType_32BGRA)]
-//
-//        dataOutput.alwaysDiscardsLateVideoFrames = true
-        
         if let photoOutput = self.photoOutput {
             if session.canAddOutput(photoOutput) {
                 session.addOutput(photoOutput)
+            }
+            if photoOutput.isDepthDataDeliverySupported {
+                photoOutput.isDepthDataDeliveryEnabled = true
                 
                 if let depthOutput = self.depthOutput {
-                    if session.canAddOutput(depthOutput) {
-                        session.addOutput(depthOutput)
-                    }
-                    if photoOutput.isDepthDataDeliverySupported {
-                        photoOutput.isDepthDataDeliveryEnabled = true
-                        
-                        depthOutput.connection(with: .depthData)?.isEnabled = true
-//                        outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [photoOutput, depthOutput])
-//                        outputSynchronizer!.setDelegate(self, queue: dataOutputQueue)
-                    }
+                    let synchronizedQueue = DispatchQueue(label: "com.sheryltay.synchronizedQueue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem)
+                    outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [dataOutput, depthOutput])
+                    outputSynchronizer!.setDelegate(self, queue: synchronizedQueue)
                 }
             }
-            
         }
         
-        session.startRunning()
-        
         session.commitConfiguration()
-        //        dataOutput.setSampleBufferDelegate(self, queue: queue)
+        
+        session.startRunning()
     }
     
     @IBAction func takePhoto(_ sender: Any) {
@@ -138,9 +138,9 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
         print("depth data output")
     }
     
-    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didDrop depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection, reason: AVCaptureOutput.DataDroppedReason) {
-        print("depth data dropped")
-    }
+//    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didDrop depthData: AVDepthData, timestamp: CMTime, connection: AVCaptureConnection, reason: AVCaptureOutput.DataDroppedReason) {
+//        print("depth data dropped")
+//    }
     
     //    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
 //        if takePhoto {
@@ -197,9 +197,11 @@ class ViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCapture
 }
 
 
-//extension ViewController: AVCaptureDataOutputSynchronizerDelegate {
-//
-//    func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer, didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection) {
-//        return
-//    }
-//}
+extension ViewController: AVCaptureDataOutputSynchronizerDelegate {
+
+    func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer, didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection) {
+//        print(synchronizedDataCollection.count)
+        guard let syncedDepthdata: AVCaptureSynchronizedDepthData = synchronizedDataCollection.synchronizedData(for: depthOutput!) as? AVCaptureSynchronizedDepthData
+                    else { return }
+    }
+}
